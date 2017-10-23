@@ -8,7 +8,7 @@ install:
     - perl -i.bak -ple "$_ = 'CCTYPE = MSVC141' if m?^CCTYPE\s*=?" Makefile
 
 build_script:
-    - dmake -P2
+    - nmake
 
 test_script:
-    - dmake test
+    - nmake test
