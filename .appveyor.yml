@@ -1,0 +1,12 @@
+image: Visual Studio 2017
+
+install:
+    - '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"'
+    - cd win32
+    - perl -i -ple "$_ = 'CCTYPE = MSVC141' if m?^CCTYPE\s*=?" Makefile
+
+build_script:
+    - dmake -P2
+
+test_script:
+    - dmake test
