@@ -1,26 +1,20 @@
 shallow_clone: true
 
+platform:
+    - x86
+    - x64
+
 environment:
     matrix:
         - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
           MY_CCTYPE: MSVC141
           MY_TOOLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
-          MY_ARCH: x64
-        - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-          MY_CCTYPE: MSVC141
-          MY_TOOLDIR: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
-          MY_ARCH: x86
         - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
           MY_CCTYPE: MSVC140
           MY_TOOLDIR: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC
-          MY_ARCH: x64
-        - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-          MY_CCTYPE: MSVC140
-          MY_TOOLDIR: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC
-          MY_ARCH: x86
 
 install:
-    - '"%MY_TOOLDIR%\vcvarsall.bat" %MY_ARCH%'
+    - '"%MY_TOOLDIR%\vcvarsall.bat" %PLATFORM%'
     - cd win32
     - perl -i.bak -ple "$_ = 'CCTYPE = ' . $ENV{MY_CCTYPE} if m?^CCTYPE\s*=?" Makefile
 
