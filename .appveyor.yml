@@ -16,10 +16,9 @@ environment:
 install:
     - '"%MY_TOOLDIR%\vcvarsall.bat" %PLATFORM%'
     - cd win32
-    - perl -i.bak -ple "$_ = 'CCTYPE = ' . $ENV{MY_CCTYPE} if m?^CCTYPE\s*=?" Makefile
 
 build_script:
-    - nmake
+    - nmake CCTYPE=%MY_CCTYPE%
 
 test_script:
-    - nmake test
+    - nmake CCTYPE=%MY_CCTYPE% test
