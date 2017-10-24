@@ -15,6 +15,7 @@ environment:
 
 install:
     - '"%MY_TOOLDIR%\vcvarsall.bat" %PLATFORM%'
+    - if %PLATFORM%==x86 set WIN64=undef
     - cd win32
 
 build_script:
