@@ -588,12 +588,17 @@ S_pat_upgrade_to_utf8(pTHX_ RExC_state_t * const pRExC_state,
 static SV*
 S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
                 SV *pat, SV ** const patternp, int pat_count,
-                OP *oplist, bool *recompile_p, SV *delim)
+                OP *oplist, bool *recompile_p, SV *delim,
+                int *pn)
 {
     SV **svp;
     int n = 0;
     bool use_delim = FALSE;
     bool alloced = FALSE;
+
+    if (!pn) {
+        pn = &n;
+    }
 
     /* if we know we have at least two args, create an empty string,
      * then concatenate args to that. For no args, return an empty string */
@@ -654,7 +659,8 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
                 pat = S_concat_pat(aTHX_ pRExC_state, pat,
                                    array, maxarg, NULL, recompile_p,
                                    /* $" */
-                                   GvSV((gv_fetchpvs("\"", GV_ADDMULTI, SVt_PV))));
+                                   GvSV((gv_fetchpvs("\"", GV_ADDMULTI, SVt_PV))),
+                                   pn);
             }
             else if (!pat) {
                 pat = newSVpvs_flags("", SVs_TEMP);
@@ -680,11 +686,11 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
             if (oplist->op_type == OP_NULL
                 && (oplist->op_flags & OPf_SPECIAL))
             {
-                assert(n < pRExC_state->code_blocks->count);
-                pRExC_state->code_blocks->cb[n].start = pat ? SvCUR(pat) : 0;
-                pRExC_state->code_blocks->cb[n].block = oplist;
-                pRExC_state->code_blocks->cb[n].src_regex = NULL;
-                n++;
+                assert(*pn < pRExC_state->code_blocks->count);
+                pRExC_state->code_blocks->cb[*pn].start = pat ? SvCUR(pat) : 0;
+                pRExC_state->code_blocks->cb[*pn].block = oplist;
+                pRExC_state->code_blocks->cb[*pn].src_regex = NULL;
+                (*pn)++;
                 code = 1;
                 oplist = OpSIBLING(oplist); /* skip CONST */
                 assert(oplist);
@@ -713,9 +719,9 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
             sv_setsv(pat, sv);
             /* overloading involved: all bets are off over literal
              * code. Pretend we haven't seen it */
-            if (n)
-                pRExC_state->code_blocks->count -= n;
-            n = 0;
+            if (*pn)
+                pRExC_state->code_blocks->count -= *pn;
+            *pn = 0;
         }
         else {
             /* ... or failing that, try "" overload */
@@ -741,7 +747,7 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
                 char *dst = SvPV_force_nomg(pat, dlen);
                 orig_patlen = dlen;
                 if (SvUTF8(msv) && !SvUTF8(pat)) {
-                    S_pat_upgrade_to_utf8(aTHX_ pRExC_state, &dst, &dlen, n);
+                    S_pat_upgrade_to_utf8(aTHX_ pRExC_state, &dst, &dlen, *pn);
                     sv_setpvn(pat, dst, dlen);
                     SvUTF8_on(pat);
                 }
@@ -764,7 +770,7 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
             }
 
             if (code)
-                pRExC_state->code_blocks->cb[n-1].end = SvCUR(pat)-1;
+                pRExC_state->code_blocks->cb[*pn-1].end = SvCUR(pat)-1;
         }
 
         /* extract any code blocks within any embedded qr//'s */
@@ -795,9 +801,9 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
                     struct reg_code_block *src, *dst;
                     STRLEN offset =  orig_patlen
                         + ReANY((REGEXP *)rx)->pre_prefix;
-                    assert(n < pRExC_state->code_blocks->count);
+                    assert(*pn < pRExC_state->code_blocks->count);
                     src = &ri->code_blocks->cb[i];
-                    dst = &pRExC_state->code_blocks->cb[n];
+                    dst = &pRExC_state->code_blocks->cb[*pn];
                     dst->start	    = src->start + offset;
                     dst->end	    = src->end   + offset;
                     dst->block	    = src->block;
@@ -805,7 +811,7 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
                                             src->src_regex
                                                 ? src->src_regex
                                                 : (REGEXP*)rx);
-                    n++;
+                    (*pn)++;
                 }
             }
         }
@@ -1489,7 +1495,7 @@ Perl_re_op_compile(pTHX_ SV ** const patternp, int pat_count,
     }
 
     pat = S_concat_pat(aTHX_ pRExC_state, NULL, new_patternp, pat_count,
-                        expr, &recompile, NULL);
+                        expr, &recompile, NULL, NULL);
 
     /* handle bare (possibly after overloading) regex: foo =~ $re */
     {
