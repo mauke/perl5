@@ -11,7 +11,7 @@ BEGIN {
 use strict;
 use warnings;
 
-plan tests => 10;
+plan tests => 31;
 
 use Fcntl qw(:seek);
 
@@ -43,4 +43,60 @@ SKIP:
     is($data, "abcxyz", "check the second write appended");
 }
 
+# GH 22385
+{
+    my $var;
+    my @warned = capture_warnings sub {
+        ok !open(my $fh, "+>", $var), 'open my $fh, "+>", $var';
+    };
+    is @warned, 1, "warned once";
+    like $warned[0], qr/^Use of uninitialized value \$var in open /;
+}
+{
+    my @var = undef;
+    my @warned = capture_warnings sub {
+        ok !open(my $fh, "+>", $var[0]), 'open my $fh, "+>", $var[0]';
+    };
+    is @warned, 1, "warned once";
+    like $warned[0], qr/^Use of uninitialized value \$var\[0\] in open /;
+}
+{
+    my %var = (a => undef);
+    my @warned = capture_warnings sub {
+        ok !open(my $fh, "+>", $var{a}), 'open my $fh, "+>", $var{a}';
+    };
+    is @warned, 1, "warned once";
+    like $warned[0], qr/^Use of uninitialized value \$var\{"a"\} in open /;
+}
 
+TODO: {
+    local our $TODO = 'GH 22385';
+    {
+        my @var;
+        my @warned = capture_warnings sub {
+            ok !open(my $fh, "+>", $var[0]), 'open my $fh, "+>", $var[0]';
+        };
+        is @warned, 1, "warned once";
+        like $warned[0], qr/^Use of uninitialized value \$var\[0\] in open /;
+
+        @warned = capture_warnings sub {
+            ok !&CORE::open(my $fh, "+>", $var[0]), 'open my $fh, "+>", $var[0]';
+        };
+        is @warned, 1, "warned once";
+        like $warned[0], qr/^Use of uninitialized value in open /;
+    }
+    {
+        my %var;
+        my @warned = capture_warnings sub {
+            ok !open(my $fh, "+>", $var{a}), 'open my $fh, "+>", $var{a}';
+        };
+        is @warned, 1, "warned once";
+        like $warned[0], qr/^Use of uninitialized value \$var\{"a"\} in open /;
+
+        @warned = capture_warnings sub {
+            ok !CORE::open(my $fh, "+>", $var{a}), 'open my $fh, "+>", $var{a}';
+        };
+        is @warned, 1, "warned once";
+        like $warned[0], qr/^Use of uninitialized value in open /;
+    }
+}
